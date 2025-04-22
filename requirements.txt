@@ -1,0 +1,10 @@
+torch==2.7.0          # Core library for tensor operations and neural networks (PyTorch)
+torchvision==0.22.0   # For image transformations, datasets, and utilities
+einops==0.8.1         # For tensor manipulation (e.g., `rearrange`)
+matplotlib==3.10.1    # For plotting and visualization
+tqdm==4.67.1          # For progress bars in training loops
+datasets==3.5.1       # Hugging Face Datasets library for easy access to datasets like Fashion-MNIST
+numpy>=1.22.4,<2.0.0  # For numerical operations and array handling
+Pillow==11.2.1        # For image loading and processing (PIL)
+requests==2.32.3      # For downloading images from URLs
+cffi>=1.9,<2.0.0
