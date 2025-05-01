@@ -6,12 +6,6 @@ from tensorflow.keras import (
 )
 from util.diffusion_schedules import offset_cosine_diffusion_schedule
 
-IMAGE_SIZE = 64
-BATCH_SIZE = 64
-
-# optimization
-EMA = 0.999
-
 class DiffusionModel(models.Model):
     """A Keras Model implementing a denoising diffusion probabilistic model (DDPM/UNet).
 
@@ -29,16 +23,22 @@ class DiffusionModel(models.Model):
         diffusion_schedule (callable): Function to compute noise/signal rates per timestep.
 
     """
-    def __init__(self, unet):
+    def __init__(self, image_size, batch_size, unet, ema_rate):
         """Initialize the DiffusionModel.
 
         Args:
             unet (tf.keras.Model): The U-Net architecture for noise prediction.
+            image_size (int): The size of the images to be generated.
+            batch_size (int): The batch size for training.
+            ema_rate (float): The rate for the exponential moving average.
         """
         super().__init__()
 
         self.normalizer = layers.Normalization()
+        self.image_size = image_size
+        self.batch_size = batch_size
         self.network = unet
+        self.ema_rate = ema_rate
         self.ema_network = models.clone_model(self.network)
         self.diffusion_schedule = offset_cosine_diffusion_schedule
 
@@ -167,7 +167,7 @@ class DiffusionModel(models.Model):
         """
         if initial_noise is None:
             initial_noise = tf.random.normal(
-                shape=(num_images, IMAGE_SIZE, IMAGE_SIZE, 3)
+                shape=(num_images, self.image_size, self.image_size, 3)
             )
         
         # Apply the reverse diffusion process.
@@ -196,11 +196,11 @@ class DiffusionModel(models.Model):
         # We first normalize the batch of images to have zero mean and unit variance.
         images = self.normalizer(images, training=True)
         # Next, we sample noise to match the shape of the input images.
-        noises = tf.random.normal(shape=(BATCH_SIZE, IMAGE_SIZE, IMAGE_SIZE, 3))
+        noises = tf.random.normal(shape=(self.batch_size, self.image_size, self.image_size, 3))
 
         # We also sample random diffusion times…
         diffusion_times = tf.random.uniform(
-            shape=(BATCH_SIZE, 1, 1, 1), minval=0.0, maxval=1.0
+            shape=(self.batch_size, 1, 1, 1), minval=0.0, maxval=1.0
         )
 
         # …and use these to generate the noise and signal rates according to the cosine dif‐
@@ -237,7 +237,7 @@ class DiffusionModel(models.Model):
         ):
             # The EMA network weights are updated to a weighted average of the existing
             # EMA weights and the trained network weights after the gradient step.
-            ema_weight.assign(EMA * ema_weight + (1 - EMA) * weight)
+            ema_weight.assign(self.ema_rate * ema_weight + (1 - self.ema_rate) * weight)
 
         return {m.name: m.result() for m in self.metrics}
 
@@ -254,9 +254,9 @@ class DiffusionModel(models.Model):
             dict: Dictionary of metric names and values.
         """
         images = self.normalizer(images, training=False)
-        noises = tf.random.normal(shape=(BATCH_SIZE, IMAGE_SIZE, IMAGE_SIZE, 3))
+        noises = tf.random.normal(shape=(self.batch_size, self.image_size, self.image_size, 3))
         diffusion_times = tf.random.uniform(
-            shape=(BATCH_SIZE, 1, 1, 1), minval=0.0, maxval=1.0
+            shape=(self.batch_size, 1, 1, 1), minval=0.0, maxval=1.0
         )
         noise_rates, signal_rates = self.diffusion_schedule(diffusion_times)
         noisy_images = signal_rates * images + noise_rates * noises
