@@ -5,7 +5,7 @@
 1. **Create a New Conda Environment**
 
 ```bash
-conda create -n myenv python=3.12
+conda create -n myenv python=3.10
 ```
 
 2. **Activate the Environment**
