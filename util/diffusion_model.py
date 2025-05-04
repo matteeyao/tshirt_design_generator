@@ -4,7 +4,7 @@ from tensorflow.keras import (
     models,
     metrics,
 )
-from util.diffusion_schedules import offset_cosine_diffusion_schedule
+from util.diffusion_schedules import cosine_diffusion_schedule
 
 class DiffusionModel(models.Model):
     """A Keras Model implementing a denoising diffusion probabilistic model (DDPM/UNet).
@@ -40,7 +40,7 @@ class DiffusionModel(models.Model):
         self.network = unet
         self.ema_rate = ema_rate
         self.ema_network = models.clone_model(self.network)
-        self.diffusion_schedule = offset_cosine_diffusion_schedule
+        self.diffusion_schedule = cosine_diffusion_schedule
 
     def compile(self, **kwargs):
         """Configure the model for training.
