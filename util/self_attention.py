@@ -5,33 +5,33 @@ class SelfAttention(layers.Layer):
     def __init__(self, channels):
         super().__init__()
         self.channels = channels
-        self.norm = layers.BatchNormalization()
         self.query = layers.Conv2D(channels, 1)
         self.key = layers.Conv2D(channels, 1)
         self.value = layers.Conv2D(channels, 1)
         
     def call(self, x):
-        batch_size, height, width, _ = tf.shape(x)
-        
-        # Normalize inputs
-        x_norm = self.norm(x)
+        # Get tensor shape using tf.shape
+        batch_size = tf.shape(x)[0]
+        height = tf.shape(x)[1]
+        width = tf.shape(x)[2]
         
         # Create query/key/value projections
-        q = self.query(x_norm)
-        k = self.key(x_norm)
-        v = self.value(x_norm)
+        q = self.query(x)
+        k = self.key(x)
+        v = self.value(x)
         
         # Reshape for attention computation
-        q = tf.reshape(q, [-1, height * width, self.channels])
-        k = tf.reshape(k, [-1, height * width, self.channels])
-        v = tf.reshape(v, [-1, height * width, self.channels])
+        q_reshaped = tf.reshape(q, [batch_size, height * width, self.channels])
+        k_reshaped = tf.reshape(k, [batch_size, height * width, self.channels])
+        v_reshaped = tf.reshape(v, [batch_size, height * width, self.channels])
         
         # Compute attention weights
-        attention = tf.matmul(q, k, transpose_b=True)
-        attention = tf.nn.softmax(attention / tf.math.sqrt(tf.cast(self.channels, tf.float32)), axis=-1)
+        scale = tf.math.sqrt(tf.cast(self.channels, tf.float32))
+        attention = tf.matmul(q_reshaped, k_reshaped, transpose_b=True) / scale
+        attention = tf.nn.softmax(attention, axis=-1)
         
         # Apply attention to values
-        out = tf.matmul(attention, v)
-        out = tf.reshape(out, [-1, height, width, self.channels])
+        output = tf.matmul(attention, v_reshaped)
+        output = tf.reshape(output, [batch_size, height, width, self.channels])
         
-        return x + out  # Residual connection
+        return x + output  # Residual connection
